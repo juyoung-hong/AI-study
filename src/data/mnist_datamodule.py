@@ -57,7 +57,7 @@ class MNISTDataModule(LightningDataModule):
         data_dir: str = "data/",
         train_val_test_split: Tuple[int, int, int] = (55_000, 5_000, 10_000),
         batch_size: int = 64,
-        num_workers: int = 0,
+        num_workers: int = 8,
         pin_memory: bool = False,
     ) -> None:
         """Initialize a `MNISTDataModule`.
@@ -120,12 +120,18 @@ class MNISTDataModule(LightningDataModule):
                 raise RuntimeError(
                     f"Batch size ({self.hparams.batch_size}) is not divisible by the number of devices ({self.trainer.world_size})."
                 )
-            self.batch_size_per_device = self.hparams.batch_size // self.trainer.world_size
+            self.batch_size_per_device = (
+                self.hparams.batch_size // self.trainer.world_size
+            )
 
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            trainset = MNIST(self.hparams.data_dir, train=True, transform=self.transforms)
-            testset = MNIST(self.hparams.data_dir, train=False, transform=self.transforms)
+            trainset = MNIST(
+                self.hparams.data_dir, train=True, transform=self.transforms
+            )
+            testset = MNIST(
+                self.hparams.data_dir, train=False, transform=self.transforms
+            )
             dataset = ConcatDataset(datasets=[trainset, testset])
             self.data_train, self.data_val, self.data_test = random_split(
                 dataset=dataset,
@@ -144,6 +150,7 @@ class MNISTDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=True,
+            persistent_workers=True,
         )
 
     def val_dataloader(self) -> DataLoader[Any]:
@@ -157,6 +164,7 @@ class MNISTDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
+            persistent_workers=True,
         )
 
     def test_dataloader(self) -> DataLoader[Any]:
@@ -170,6 +178,7 @@ class MNISTDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
+            persistent_workers=True,
         )
 
     def teardown(self, stage: Optional[str] = None) -> None:
